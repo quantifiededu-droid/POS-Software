@@ -20,7 +20,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { cn } from '../lib/utils';
+import { cn } from '../components/UI';
 
 export default function Dashboard() {
   const navigate = useNavigate();
