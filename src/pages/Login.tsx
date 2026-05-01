@@ -25,9 +25,18 @@ export default function Login() {
       if (storage) {
         const { state } = JSON.parse(storage);
         if (state.business?.id) {
-          const res = await fetch(`/api/users/${state.business.id}`);
-          const data = await res.json();
-          setUsers(data);
+          try {
+            const res = await fetch(`/api/users/${state.business.id}`);
+          
+            if (!res.ok) {
+              throw new Error('Failed to fetch users');
+            }
+          
+            const data = await res.json();
+            setUsers(data);
+          } catch (err) {
+            console.error(err);
+          }
         }
       }
     };
@@ -51,7 +60,7 @@ export default function Login() {
       if (data.success) {
         setBusiness(data.business);
         setUser(data.user);
-        navigate('/');
+        navigate('/dashboard');
       } else {
         setError('Invalid PIN. Please try again.');
         setPin('');
