@@ -21,31 +21,94 @@ async function startServer() {
 
   // API ROUTES
   
-  // Auth & Business
-  app.post('/api/onboard', (req, res) => {
-    const { business, owner } = req.body;
-    const businessId = uuidv4();
-    const ownerId = uuidv4();
+app.post('/api/onboard', (req, res) => {
+  const { business, owner } = req.body;
 
-    try {
-      const insertBusiness = db.prepare(`
-        INSERT INTO businesses (id, name, owner_name, email, phone, address)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      insertBusiness.run(businessId, business.name, business.ownerName, business.email, business.phone, business.address);
+  const businessId = uuidv4();
+  const ownerId = uuidv4();
 
-      const insertOwner = db.prepare(`
-        INSERT INTO users (id, business_id, full_name, role, email, phone, pin)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-      insertOwner.run(ownerId, businessId, owner.fullName, 'owner', owner.email, owner.phone, owner.pin);
+  try {
+    // Create business
+    const insertBusiness = db.prepare(`
+      INSERT INTO businesses (
+        id,
+        name,
+        owner_name,
+        email,
+        phone,
+        address
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
 
-      res.json({ success: true, businessId, ownerId });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Failed to onboard business' });
-    }
-  });
+    insertBusiness.run(
+      businessId,
+      business.name,
+      business.ownerName,
+      business.email,
+      business.phone,
+      business.address
+    );
+
+    // Create owner
+    const insertOwner = db.prepare(`
+      INSERT INTO users (
+        id,
+        business_id,
+        full_name,
+        role,
+        email,
+        phone,
+        pin
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertOwner.run(
+      ownerId,
+      businessId,
+      owner.fullName,
+      'owner',
+      owner.email,
+      owner.phone,
+      owner.pin
+    );
+
+    // Fetch newly created records
+    const createdBusiness = db
+      .prepare('SELECT * FROM businesses WHERE id = ?')
+      .get(businessId);
+
+    const createdOwner = db
+      .prepare(`
+        SELECT
+          id,
+          business_id,
+          full_name,
+          role,
+          profile_picture_path
+        FROM users
+        WHERE id = ?
+      `)
+      .get(ownerId);
+
+    // IMPORTANT FIX
+    res.json({
+      success: true,
+      business: createdBusiness,
+      owner: createdOwner,
+      token: uuidv4(),
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to onboard business',
+    });
+  }
+});
 
   app.post('/api/login', (req, res) => {
     const { userId, pin } = req.body;
