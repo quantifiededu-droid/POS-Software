@@ -1,100 +1,227 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/UI';
-import { 
-  TrendingUp, 
-  Users, 
-  AlertTriangle, 
+import {
+  TrendingUp,
+  AlertTriangle,
   Calendar,
   ArrowUpRight,
-  ShoppingCart
+  ShoppingCart,
+  Package,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { ClemtrixLogo } from '../components/Branding';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
   ResponsiveContainer,
-  CartesianGrid 
+  CartesianGrid,
 } from 'recharts';
+import { cn } from '../lib/utils';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { business } = useStore();
   const [stats, setStats] = useState<any>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (business?.id) {
-      fetch(`/api/dashboard/${business.id}`)
-        .then(res => res.json())
-        .then(data => setStats(data));
-    }
+    if (!business?.id) return;
+
+    fetch(`/api/dashboard/${business.id}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+
+        return res.json();
+      })
+      .then((data) => {
+        setStats(data);
+        setError('');
+      })
+      .catch((err) => {
+        console.error(err);
+        setError('Could not load dashboard data.');
+      });
   }, [business?.id]);
 
-  if (!stats) return <div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold" /></div>;
+  if (error) {
+    return (
+      <div className="h-64 flex items-center justify-center text-red-500 font-bold">
+        {error}
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="h-64 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold" />
+      </div>
+    );
+  }
 
   const statCards = [
-    { title: "Today's Sales", value: `$${(stats.todaySales || 0).toLocaleString()}`, icon: TrendingUp, color: "text-green-500", bg: "bg-green-50" },
-    { title: "Total Transactions", value: stats.totalTransactions || 0, icon: ShoppingCart, color: "text-blue-500", bg: "bg-blue-50" },
-    { title: "Low Stock Items", value: stats.lowStockCount || 0, icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50" },
-    { title: "Pending Expiries", value: "0", icon: Calendar, color: "text-red-500", bg: "bg-red-50" },
+    {
+      title: "Today's Sales",
+      value: `$${Number(stats.todaySales || 0).toLocaleString()}`,
+      icon: TrendingUp,
+      color: 'text-green-500',
+      bg: 'bg-green-50',
+      note: 'Live sales total',
+    },
+    {
+      title: 'Total Transactions',
+      value: stats.totalTransactions || 0,
+      icon: ShoppingCart,
+      color: 'text-blue-500',
+      bg: 'bg-blue-50',
+      note: 'Today’s completed sales',
+    },
+    {
+      title: 'Low Stock Items',
+      value: stats.lowStockCount || 0,
+      icon: AlertTriangle,
+      color: 'text-amber-500',
+      bg: 'bg-amber-50',
+      note: 'Needs attention',
+    },
+    {
+      title: 'Pending Expiries',
+      value: '0',
+      icon: Calendar,
+      color: 'text-red-500',
+      bg: 'bg-red-50',
+      note: 'No expiry alerts',
+    },
   ];
 
   return (
     <div className="space-y-8">
-      {/* Stat Bar */}
-      <div className="grid grid-cols-4 gap-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <p className="text-sm font-bold text-gold uppercase tracking-widest">
+            Dashboard
+          </p>
+          <h1 className="text-3xl font-black text-navy mt-2">
+            Welcome back{business?.name ? `, ${business.name}` : ''}
+          </h1>
+          <p className="text-slate-500 mt-2">
+            Track sales, inventory, alerts, and recent business activity.
+          </p>
+        </div>
+
+        <button
+          onClick={() => navigate('/pos')}
+          className="hidden md:flex items-center gap-3 bg-navy text-white px-6 py-4 rounded-2xl font-bold hover:bg-navy/90 transition active:scale-95"
+        >
+          <ShoppingCart size={18} />
+          New Sale
+        </button>
+      </div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {statCards.map((stat, i) => (
           <Card key={i} className="flex flex-col gap-4 p-5">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.title}</p>
             <div className="flex items-center justify-between">
-              <p className={cn("text-2xl font-black text-navy", stat.title === 'Low Stock Items' && 'text-gold')}>{stat.value}</p>
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", stat.bg, stat.color)}>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                {stat.title}
+              </p>
+
+              <div
+                className={cn(
+                  'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                  stat.bg,
+                  stat.color
+                )}
+              >
                 <stat.icon size={20} />
               </div>
             </div>
-            {i === 0 && <p className="text-[10px] text-green-600 font-bold uppercase tracking-tight">↑ 12% from yesterday</p>}
+
+            <p
+              className={cn(
+                'text-3xl font-black text-navy',
+                stat.title === 'Low Stock Items' &&
+                  Number(stat.value) > 0 &&
+                  'text-gold'
+              )}
+            >
+              {stat.value}
+            </p>
+
+            <p className="text-xs text-slate-400 font-semibold">
+              {stat.note}
+            </p>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Sales Chart */}
-        <Card className="col-span-2 overflow-hidden flex flex-col p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold text-navy">Sales Last 7 Days</h3>
+        <Card className="xl:col-span-2 overflow-hidden flex flex-col p-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <h3 className="text-xl font-bold text-navy">
+                Sales Last 7 Days
+              </h3>
+              <p className="text-sm text-slate-400 mt-1">
+                Daily sales performance overview
+              </p>
+            </div>
+
             <div className="flex items-center gap-2 text-green-500 text-sm font-bold">
               <ArrowUpRight size={16} />
-              <span>+12.5% from last week</span>
+              <span>Live overview</span>
             </div>
           </div>
+
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.salesHistory}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis 
-                  dataKey="date" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 12, fontWeight: 600, fill: '#64748B' }}
+              <BarChart data={stats.salesHistory || []}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#E2E8F0"
+                />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fill: '#64748B',
+                  }}
                   dy={10}
                 />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 12, fontWeight: 600, fill: '#64748B' }}
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fill: '#64748B',
+                  }}
                 />
-                <Tooltip 
+                <Tooltip
                   cursor={{ fill: '#F5A62310' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                  }}
                 />
-                <Bar 
-                  dataKey="total" 
-                  fill="#F5A623" 
-                  radius={[6, 6, 0, 0]} 
+                <Bar
+                  dataKey="total"
+                  fill="#F5A623"
+                  radius={[6, 6, 0, 0]}
                   barSize={40}
                 />
               </BarChart>
@@ -102,44 +229,55 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* Quick Actions */}
+        {/* Right Side */}
         <div className="space-y-6">
           <Card className="p-8">
-            <h3 className="text-lg font-bold text-navy mb-6">Quick Actions</h3>
+            <h3 className="text-lg font-bold text-navy mb-6">
+              Quick Actions
+            </h3>
+
             <div className="grid grid-cols-1 gap-3">
-              <button 
+              <button
                 onClick={() => navigate('/pos')}
-                className="flex items-center justify-center gap-3 p-4 bg-navy rounded-lg text-white font-bold hover:bg-navy/90 transition-all active:scale-95 w-full"
+                className="flex items-center justify-center gap-3 p-4 bg-navy rounded-xl text-white font-bold hover:bg-navy/90 transition active:scale-95 w-full"
               >
                 <ShoppingCart size={18} />
-                <span>Create New Sale (Ctrl+N)</span>
+                <span>Create New Sale</span>
               </button>
-              <button 
+
+              <button
                 onClick={() => navigate('/products')}
-                className="flex items-center justify-center gap-3 p-4 bg-white border border-navy rounded-lg text-navy font-bold hover:bg-navy hover:text-white transition-all active:scale-95 w-full"
+                className="flex items-center justify-center gap-3 p-4 bg-white border border-navy rounded-xl text-navy font-bold hover:bg-navy hover:text-white transition active:scale-95 w-full"
               >
-                <TrendingUp size={18} />
+                <Package size={18} />
                 <span>Add New Product</span>
               </button>
-              <button 
+
+              <button
                 onClick={() => navigate('/inventory')}
-                className="flex items-center justify-center gap-3 p-4 bg-white border border-navy rounded-lg text-navy font-bold hover:bg-navy hover:text-white transition-all active:scale-95 w-full"
+                className="flex items-center justify-center gap-3 p-4 bg-white border border-navy rounded-xl text-navy font-bold hover:bg-navy hover:text-white transition active:scale-95 w-full"
               >
                 <ArrowUpRight size={18} />
                 <span>Restock Inventory</span>
               </button>
             </div>
           </Card>
-          
-          <Card className="p-8 bg-navy text-white relative h-full overflow-hidden">
+
+          <Card className="p-8 bg-navy text-white relative overflow-hidden">
             <div className="relative z-10">
               <h3 className="text-lg font-bold mb-2">System Status</h3>
-              <p className="text-white/60 text-sm mb-6">Your Clemtrix POS node is running perfectly.</p>
+              <p className="text-white/60 text-sm mb-6">
+                Your Clemtrix POS node is running perfectly.
+              </p>
+
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest bg-white/10 px-2 py-1 rounded">Sync: Live</span>
+                <span className="text-xs font-bold uppercase tracking-widest bg-white/10 px-2 py-1 rounded">
+                  Sync: Live
+                </span>
               </div>
             </div>
+
             <div className="absolute top-[-20%] right-[-10%] opacity-10 rotate-12">
               <ClemtrixLogo className="h-48" />
             </div>
@@ -150,41 +288,91 @@ export default function Dashboard() {
       {/* Recent Transactions */}
       <Card className="p-0 overflow-hidden">
         <div className="p-8 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-navy">Recent Transactions</h3>
-          <button className="text-gold font-bold text-sm hover:underline">View All Sales</button>
+          <div>
+            <h3 className="text-xl font-bold text-navy">
+              Recent Transactions
+            </h3>
+            <p className="text-sm text-slate-400 mt-1">
+              Latest completed sales from your POS.
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('/reports')}
+            className="text-gold font-bold text-sm hover:underline"
+          >
+            View Reports
+          </button>
         </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-border-subtle">
-                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Transaction ID</th>
-                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Date & Time</th>
-                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Cashier</th>
-                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Payment</th>
-                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                  Transaction ID
+                </th>
+                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                  Date & Time
+                </th>
+                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                  Cashier
+                </th>
+                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">
+                  Payment
+                </th>
+                <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">
+                  Amount
+                </th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-[#F8FAFC]">
-              {stats.recentSales?.length > 0 ? stats.recentSales.map((sale: any) => (
-                <tr key={sale.id} className="hover:bg-[#F8FAFC] transition-colors">
-                  <td className="px-8 py-4 text-[13px] font-bold text-navy uppercase tracking-tight">#{sale.id.slice(0, 8)}</td>
-                  <td className="px-8 py-4 text-slate-500 text-[13px] font-medium">{new Date(sale.created_at).toLocaleString()}</td>
-                  <td className="px-8 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gold/10 flex items-center justify-center text-[10px] text-gold font-black">
-                        {sale.cashier.charAt(0)}
+              {stats.recentSales?.length > 0 ? (
+                stats.recentSales.map((sale: any) => (
+                  <tr
+                    key={sale.id}
+                    className="hover:bg-[#F8FAFC] transition-colors"
+                  >
+                    <td className="px-8 py-4 text-[13px] font-bold text-navy uppercase tracking-tight">
+                      #{String(sale.id).slice(0, 8)}
+                    </td>
+
+                    <td className="px-8 py-4 text-slate-500 text-[13px] font-medium">
+                      {sale.created_at
+                        ? new Date(sale.created_at).toLocaleString()
+                        : '—'}
+                    </td>
+
+                    <td className="px-8 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-gold/10 flex items-center justify-center text-[10px] text-gold font-black">
+                          {sale.cashier?.charAt(0) || 'U'}
+                        </div>
+
+                        <span className="text-[13px] font-bold text-navy">
+                          {sale.cashier || 'Unknown'}
+                        </span>
                       </div>
-                      <span className="text-[13px] font-bold text-navy">{sale.cashier}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-4 text-center">
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{sale.payment_method}</span>
-                  </td>
-                  <td className="px-8 py-4 text-right text-[13px] font-black text-navy">${sale.total_amount.toLocaleString()}</td>
-                </tr>
-              )) : (
+                    </td>
+
+                    <td className="px-8 py-4 text-center">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                        {sale.payment_method || 'N/A'}
+                      </span>
+                    </td>
+
+                    <td className="px-8 py-4 text-right text-[13px] font-black text-navy">
+                      ${Number(sale.total_amount || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan={5} className="px-8 py-12 text-center text-gray-400 font-medium font-serif italic text-lg">
+                  <td
+                    colSpan={5}
+                    className="px-8 py-12 text-center text-gray-400 font-medium italic text-lg"
+                  >
                     No transactions recorded yet.
                   </td>
                 </tr>
