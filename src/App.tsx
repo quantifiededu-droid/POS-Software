@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { useStore } from './store/useStore';
 
-// Lazy loaded pages
 const Landing = React.lazy(() => import('./pages/Landing'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const POS = React.lazy(() => import('./pages/POS'));
@@ -21,12 +20,10 @@ const Onboarding = React.lazy(() => import('./pages/Onboarding'));
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, business, isOnboarded } = useStore();
 
-  // User hasn't completed onboarding
   if (!isOnboarded) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // User onboarded but not logged in
   if (!user || !business) {
     return <Navigate to="/login" replace />;
   }
@@ -34,17 +31,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <Layout>{children}</Layout>;
 };
 
-const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, business, isOnboarded } = useStore();
+const LoginRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, business } = useStore();
 
-  // Already logged in
   if (user && business) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Not onboarded yet
-  if (!isOnboarded) {
-    return <Navigate to="/onboarding" replace />;
+  return <>{children}</>;
+};
+
+const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, business, isOnboarded } = useStore();
+
+  if (isOnboarded && user && business) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -61,25 +62,26 @@ export default function App() {
         }
       >
         <Routes>
-          {/* Landing Page */}
           <Route path="/" element={<Landing />} />
 
-          {/* Auth */}
           <Route
             path="/onboarding"
-            element={<Onboarding />}
+            element={
+              <OnboardingRoute>
+                <Onboarding />
+              </OnboardingRoute>
+            }
           />
 
           <Route
             path="/login"
             element={
-              <PublicRoute>
+              <LoginRoute>
                 <Login />
-              </PublicRoute>
+              </LoginRoute>
             }
           />
 
-          {/* Protected Pages */}
           <Route
             path="/dashboard"
             element={
@@ -170,7 +172,6 @@ export default function App() {
             }
           />
 
-          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </React.Suspense>
