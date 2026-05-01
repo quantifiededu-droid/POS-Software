@@ -26,7 +26,7 @@ export default function Onboarding() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:3000/api/onboard', {
+      const res = await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
