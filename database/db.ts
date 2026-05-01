@@ -8,7 +8,6 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.resolve(__dirname, '../../clemtrix.db');
 const db = new Database(dbPath);
 
-// Enable foreign keys
 db.pragma('foreign_keys = ON');
 
 export function initDb() {
@@ -42,15 +41,20 @@ export function initDb() {
       id TEXT PRIMARY KEY,
       business_id TEXT NOT NULL,
       name TEXT NOT NULL,
-      sku TEXT UNIQUE,
+      sku TEXT,
       category TEXT,
       unit TEXT DEFAULT 'pcs',
       cost_price REAL DEFAULT 0,
       selling_price REAL DEFAULT 0,
       low_stock_threshold INTEGER DEFAULT 10,
       is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id)
     );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_products_business_sku
+    ON products(business_id, sku)
+    WHERE sku IS NOT NULL AND sku != '';
 
     CREATE TABLE IF NOT EXISTS product_batches (
       id TEXT PRIMARY KEY,
@@ -111,6 +115,7 @@ export function initDb() {
       notify_email TEXT,
       notify_phone TEXT,
       is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES businesses(id),
       FOREIGN KEY (product_id) REFERENCES products(id)
     );
@@ -141,6 +146,7 @@ export function initDb() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
   `);
+
   console.log('Database initialized successfully');
 }
 
